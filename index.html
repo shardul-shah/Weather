@@ -12,10 +12,28 @@
 		Weather 
 		</title>
 
+
 		<link rel="stylesheet" href="index.css" type="text/css">
 
 	</head>
 	<body>
+		<!-- Using this nav bar for now, might change later depending on Website style -->
+		<nav>
+			<ul id="nav_bar">
+				<li><a href="#contact">Contact</a></li>
+	  			<li><a href="#about">About</a></li>
+	 			<li><a href="#social_media">Social Media</a></li>
+	 			<li><a href="#research">Research & Science</a></li>
+	 			<li id="dark_mode_label">Enable Dark Mode</li>
+	 			<li>
+	 				<label class="switch">
+ 						<input type="checkbox" onclick="toggleDarkMode()"> <!-- Implement toggleDarkMode() function later -->
+  							<span class="slider_dark_mode round"> </span>
+					</label>
+				</li>
+			</ul>
+		</nav>
+
 		<p> Test </p>
 	</body>
 </html>
