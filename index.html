@@ -1,4 +1,4 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html lang="en">
 	<head>
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -15,7 +15,11 @@
 
 		<link rel="stylesheet" href="index.css" type="text/css">
 
+		<script type="text/javascript" src="scripts/retrieveWeather.js" defer>
+		</script>
+
 	</head>
+
 	<body>
 		<!-- Using this nav bar for now, might change later depending on Website style -->
 		<nav>
@@ -34,6 +38,13 @@
 			</ul>
 		</nav>
 
-		<p> Test </p>
+		<p id="test_paragraph"> 
+		Test 
+		</p>
+
+		<label for="physical_location">Enter Location Here: </label>
+		<input type="text" id="physical_location" value="Edmonton, Canada" name="physical_location">
+		<button onclick="retrieveWeatherForecast()"> Search </button>
+
 	</body>
 </html>
