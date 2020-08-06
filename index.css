@@ -2,6 +2,30 @@ body {
 	background-color: gold;
 }
 
+/* used for horizontal centering */
+.container_horizontal {
+	display: flex;
+	justify-content: center;
+	flex-direction: row;
+}
+
+/* used for vertical centering in page */
+.container_vertical {
+	display: flex;
+	min-height: 100vh; /* ensures the container used for vertical centering is always the size of the device*/
+	align-items: center;
+}
+
+/* used for both vertical (in page) and horizontal centering */
+.container {
+	display: flex;
+	justify-content: center;
+	min-height: 100vh; /* ensures the container used for vertical centering is always the size of the device*/
+	align-items: center;
+}
+
+
+
 /* for large screens; if screen_width >= 800 pixels */
 
 #nav_bar {

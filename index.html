@@ -15,8 +15,12 @@
 
 		<link rel="stylesheet" href="index.css" type="text/css">
 
+		<!--To allow the use of JQuery in Web App -->
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js">
+		</script>
 		<script type="text/javascript" src="scripts/retrieveWeather.js" defer>
 		</script>
+
 
 	</head>
 
@@ -37,14 +41,25 @@
 				</li>
 			</ul>
 		</nav>
-
-		<p id="test_paragraph"> 
-		Test 
-		</p>
-
-		<label for="physical_location">Enter Location Here: </label>
-		<input type="text" id="physical_location" value="Edmonton, Canada" name="physical_location">
-		<button onclick="retrieveWeatherForecast()"> Search </button>
-
+		<div class="container_horizontal">
+			<p id="test_paragraph" style="height: 200px"> 
+			Test 
+			</p>
+			<div style="width: 100%">
+			</div>
+			<p id="testp2">
+			Test 2
+			</p>
+			<div style="width: 100%">
+			</div>
+			<p id="testp3">
+			Test 3
+			</p>
+			<div style="width: 100%">
+			</div>
+			<label for="physical_location">Enter Location Here: </label>
+			<input type="text" id="physical_location" value="Edmonton, Canada" name="physical_location">
+			<button onclick="retrieveJSONData()"> Search </button>
+		</div>
 	</body>
 </html>
