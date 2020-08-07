@@ -7,6 +7,7 @@ body {
 	display: flex;
 	justify-content: center;
 	flex-direction: row;
+	flex-wrap: wrap;
 }
 
 /* used for vertical centering in page */
