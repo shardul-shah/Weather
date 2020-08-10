@@ -2,6 +2,10 @@ body {
 	background-color: gold;
 }
 
+#physical_location {
+	width: 80%;
+}
+
 /* used for horizontal centering */
 .container_horizontal {
 	display: flex;
