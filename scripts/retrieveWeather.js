@@ -3,8 +3,8 @@ var OneCallWeatherInfo = {};
 var simplifiedFiveDayWeatherData = [];
 var simplifiedOneCallWeatherData = [{"current": {}}, {"hourly": {}}, {"daily": {}}];
 const browserTimeZone  = Intl.DateTimeFormat().resolvedOptions().timeZone;
-var weather_API_key = "872ef0432dbc6d8ab88c0f92d85d7746"; //FIXME, hide API key
-var google_API_key = "AIzaSyCTWMOEVXf6COc879LAkU8miQchsR-GZJE"; //FIXME, hide API key
+var weather_API_key = config.WEATHER_API_KEY; //FIXME, hide API key
+var google_API_key = config.GOOGLE_API_KEY; //FIXME, hide API key
 var coordinates = {};
 
 //perhaps add local time zone (e.g. PST) when outputting the time/date for the user
@@ -119,10 +119,6 @@ function getCoordinates(city, country) {
 	$.getJSON(geoCodeUrl, saveCoordinates);
 };
 
-/*function saveCoordinates(data) {
-	coordinates["longitude"] = data["results"][0]["geometry"]["location"]["lng"];
-	coordinates["latitude"] = data["results"][0]["geometry"]["location"]["lat"];
-}*/
 
 //FIXME make decision on whether to restrict searches to only showing city results or allow any type of search, but make a function to allow only the city to be used in the API_url
 function activatePlacesSearch() {
