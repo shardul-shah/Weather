@@ -1,14 +1,19 @@
 var FiveDayWeatherInfo = {}; 
 var OneCallWeatherInfo = {};
+var historicalOneCallWeatherInfo = [];
 var simplifiedFiveDayWeatherData = [];
-var simplifiedOneCallWeatherData = [{"current": {}}, {"hourly": {}}, {"daily": {}}];
+var simplifiedOneCallWeatherData = [{"current": []}, {"hourly": []}, {"daily": []}];
+var simplifiedHistoricalOneCallWeatherData = []; //only stores historical hourly data. This variable is a list of lists of dictionaries. Each list in this list represents one day of past weather information.
 const browserTimeZone  = Intl.DateTimeFormat().resolvedOptions().timeZone;
 var weather_API_key = config.WEATHER_API_KEY; //FIXME, hide API key
 var google_API_key = config.GOOGLE_API_KEY; //FIXME, hide API key
 var coordinates = {};
 
+//TODO LIST
 //perhaps add local time zone (e.g. PST) when outputting the time/date for the user
 //use weatherAPI icons/id for pictures in the app
+//Convert units from imperial to metric and metric to imperial depending on user preferences (maybe a switch).
+//(CHECK AVALIABLE TAGS) Wind gust, daily.rain, daily.snow is not avaliable everywhere, maybe adjust it for places that don't have wind gust data or remove that completely
 
 function retrieveJSONData() {
 	var physical_location = document.getElementById("physical_location").value;
@@ -36,12 +41,31 @@ function retrieveJSONData() {
 };
 
 function retrieveOneCallJSONData() {
+	//present+Future data API call
+
 	var API_appid = "&APPID=" + weather_API_key; //can make this const global later  (and other variables)
 	var excludeMinutelyData = "&exclude=minutely"; 
 	//the purpose of this is to exclude minutely data as it is not avaliable for every city/region in the world in this API, which makes data inconsistent (furthermore, it is not needed for a typical weather app)
 	var API_url_OneCall = "http://api.openweathermap.org/data/2.5/onecall?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+ excludeMinutelyData+ API_appid;
 	console.log(API_url_OneCall);
 	console.log(coordinates);
+
+	//past data API call
+	var currentEpochTime = Math.floor((new Date()).getTime()/1000); //find currentEpochTime in seconds (divide by 1000 for ms -> s)
+	const numSecondsInOneDay = 86400;
+	for (let i=0; i<6; i++) { //retrieve weather information for some hours of today and the last 5 days before today
+		var API_url_Historical_OneCall = "http://api.openweathermap.org/data/2.5/onecall/timemachine?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+"&dt="+currentEpochTime+API_appid;
+		$.getJSON(API_url_Historical_OneCall, function(data) {
+		historicalOneCallWeatherInfo.push(data);
+		});
+		console.log(new Date(currentEpochTime*1000));
+		console.log(API_url_Historical_OneCall);
+		//console.log(currentEpochTime);
+		currentEpochTime-=numSecondsInOneDay; //go back a day to retrieve the weather information for the past day
+	}
+	console.log(historicalOneCallWeatherInfo);
+	console.log(historicalOneCallWeatherInfo.length);
+
 	$.getJSON(API_url_OneCall, function(data) {
 		OneCallWeatherInfo = data;
 		/*the use of another function in the callback function to ensure OneCallJSONData gets updated from the first time 
@@ -57,6 +81,37 @@ function useOneCallJSONData() {
 	console.log(OneCallWeatherInfo);
 	simplifyOneCallWeatherData(OneCallWeatherInfo);
 	console.log(simplifiedOneCallWeatherData);
+	simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo);
+	console.log(simplifiedHistoricalOneCallWeatherData);
+};
+
+function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
+	//historicalOneCallWeatherInfo is a list of the information of weather of a particular city, including:
+	//-Weather at the requested time - "current" (I will not be storing this)
+	//-Hourly weather information for the day of the requested time (I will be storing this)
+	console.log(JSON.stringify(historicalOneCallWeatherInfo));
+	console.log(historicalOneCallWeatherInfo.length.toString());
+	for (var j = 0; j<historicalOneCallWeatherInfo.length; j++) {
+		var historicalDailyWeatherData = []; //weatherData for one day
+
+		for (var i = 0; i<historicalOneCallWeatherInfo[j]["hourly"].length; i++) {
+			var historicalHourlyWeatherData = {}; //weatherData for one hour
+			historicalHourlyWeatherData["dateTime"] = convertToSpecifiedTimeZone(new Date(historicalOneCallWeatherInfo[j]["hourly"][i]["dt"]*1000), browserTimeZone); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time
+			historicalHourlyWeatherData["currentTemp"] = historicalOneCallWeatherInfo[j]["hourly"][i]["temp"] - 273.15;
+			historicalHourlyWeatherData["feelsLikeTemp"] = historicalOneCallWeatherInfo[j]["hourly"][i]["feels_like"] - 273.15;
+			historicalHourlyWeatherData["seaLevelPressure"] = historicalOneCallWeatherInfo[j]["hourly"][i]["pressure"]/10; //convert hectopascal to kilopascal
+			historicalHourlyWeatherData["humidity"] = historicalOneCallWeatherInfo[j]["hourly"][i]["humidity"];
+			historicalHourlyWeatherData["description"] = historicalOneCallWeatherInfo[j]["hourly"][i]["weather"]["description"];
+			historicalHourlyWeatherData["windSpeed"] = historicalOneCallWeatherInfo[j]["hourly"][i]["wind_speed"]*3.6; //convert m/s to km/h
+			historicalHourlyWeatherData["visibility"] = historicalOneCallWeatherInfo[j]["hourly"][i]["visibility"]; //visibility in meters
+			historicalHourlyWeatherData["precipitationChance"] = historicalOneCallWeatherInfo[j]["hourly"][i]["pop"] * 100; //convert decimal to %
+			historicalHourlyWeatherData["cloudCover"] = historicalOneCallWeatherInfo[j]["hourly"][i]["clouds"]["all"] * 100; //convert decimal to %
+			historicalDailyWeatherData.push(historicalHourlyWeatherData);
+		}
+		simplifiedHistoricalOneCallWeatherData.push(historicalDailyWeatherData);	
+	}
+	console.log(simplifiedHistoricalOneCallWeatherData);
+	console.log(historicalOneCallWeatherInfo.length);
 };
 
 function simplifyOneCallWeatherData(OneCallWeatherInfo) {
@@ -65,17 +120,100 @@ function simplifyOneCallWeatherData(OneCallWeatherInfo) {
 	//-Hourly weather for 48 hours (2 days)
 	//-Daily (7 day weather) (1 dictionary for each day)
 
-	date = new Date(OneCallWeatherInfo["current"]["dt"]*1000); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time
-	simplifiedOneCallWeatherData[0]["current"]["dateTime"] = convertToLocalTime(date); 
-	simplifiedOneCallWeatherData[0]["current"]["currentTemp"] = OneCallWeatherInfo["current"]["temp"] - 273.15;
-	simplifiedOneCallWeatherData[0]["current"]["feelsLikeTemp"] = OneCallWeatherInfo["current"]["feels_like"] - 273.15;
-	simplifiedOneCallWeatherData[0]["current"]["seaLevelPressure"] = OneCallWeatherInfo["current"]["pressure"]/10; // convert hectopascal to kilopascal
-	simplifiedOneCallWeatherData[0]["current"]["UVIndex"] = OneCallWeatherInfo["current"]["uvi"];
-	simplifiedOneCallWeatherData[0]["current"]["cloudCover"] = OneCallWeatherInfo["current"]["clouds"];
-	simplifiedOneCallWeatherData[0]["current"]["visibility"] = OneCallWeatherInfo["current"]["visibility"];
-	simplifiedOneCallWeatherData[0]["current"]["windSpeed"] = OneCallWeatherInfo["current"]["wind_speed"];
-	simplifiedOneCallWeatherData[0]["current"]["windGustSpeed"] = OneCallWeatherInfo["current"]["wind_gust"];
-	simplifiedOneCallWeatherData[0]["current"]["description"] = OneCallWeatherInfo["current"]["weather"][0]["description"];
+	var currentWeatherData = {};
+	currentWeatherData["dateTime"] = convertToSpecifiedTimeZone(new Date(OneCallWeatherInfo["current"]["dt"]*1000), browserTimeZone); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time); 
+	currentWeatherData["currentTemp"] = OneCallWeatherInfo["current"]["temp"] - 273.15;
+	currentWeatherData["feelsLikeTemp"] = OneCallWeatherInfo["current"]["feels_like"] - 273.15;
+	currentWeatherData["seaLevelPressure"] = OneCallWeatherInfo["current"]["pressure"]/10; // convert hectopascal to kilopascal
+	currentWeatherData["UVIndex"] = OneCallWeatherInfo["current"]["uvi"];
+	currentWeatherData["cloudCover"] = OneCallWeatherInfo["current"]["clouds"]*100; //convert decimal to %
+	currentWeatherData["visibility"] = OneCallWeatherInfo["current"]["visibility"]; //visibility in meters
+	currentWeatherData["windSpeed"] = OneCallWeatherInfo["current"]["wind_speed"]*3.6; //convert m/s to km/h
+	currentWeatherData["description"] = OneCallWeatherInfo["current"]["weather"][0]["description"];
+
+	if ("wind_gust" in OneCallWeatherInfo["current"]) { //if wind_gust data avaliable
+		currentWeatherData["windGustSpeed"] = OneCallWeatherInfo["current"]["wind_gust"]*3.6; //convert m/s to km/h; current wind gust speed
+
+	}	
+
+	if ("rain" in OneCallWeatherInfo["current"]) { //if rainVolume data avaliable
+		currentWeatherData["rainVolume"] = OneCallWeatherInfo["current"]["rain"]["1h"]; //rain volume in last hour in mm
+	}
+	
+	if ("snow" in OneCallWeatherInfo["current"]) { //if snowVolume data avaliable 
+		currentWeatherData["snowVolume"] =  OneCallWeatherInfo["current"]["snow"]["1h"]; //snow volume in last hour in mm
+	}
+	simplifiedOneCallWeatherData[0]["current"].push(currentWeatherData);
+
+	for (var i=0; i<OneCallWeatherInfo["hourly"].length; i++) {
+		var hourlyWeatherData = {};
+		hourlyWeatherData["dateTime"] = convertToSpecifiedTimeZone(new Date(OneCallWeatherInfo["hourly"][i]["dt"]*1000), browserTimeZone); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time); 
+		hourlyWeatherData["currentTemp"] = OneCallWeatherInfo["hourly"][i]["temp"] - 273.15;
+		hourlyWeatherData["feelsLikeTemp"] = OneCallWeatherInfo["hourly"][i]["feels_like"] - 273.15;
+		hourlyWeatherData["seaLevelPressure"] = OneCallWeatherInfo["hourly"][i]["pressure"]/10; //convert hectopascal to kilopascal
+		hourlyWeatherData["humidity"] = OneCallWeatherInfo["hourly"][i]["humidity"];
+		hourlyWeatherData["cloudCover"] = OneCallWeatherInfo["hourly"][i]["clouds"] * 100; //convert decimal to %
+		hourlyWeatherData["visibility"] = OneCallWeatherInfo["hourly"][i]["visibility"]; //visibility in meters
+		hourlyWeatherData["windSpeed"] = OneCallWeatherInfo["hourly"][i]["wind_speed"] * 3.6; //convert m/s to km/h
+		hourlyWeatherData["description"] = OneCallWeatherInfo["hourly"][i]["weather"][0]["description"];
+		hourlyWeatherData["precipitationChance"] = OneCallWeatherInfo["hourly"][i]["pop"] * 100; //convert decimal to %
+
+		if ("wind_gust" in OneCallWeatherInfo["hourly"][i]) { //if wind_gust data avaliable
+			hourlyWeatherData["windGustSpeed"] = OneCallWeatherInfo["hourly"][i]["wind_gust"]*3.6; //convert m/s to km/h; wind gust speed in the last hour
+		}	
+
+		if ("rain" in OneCallWeatherInfo["hourly"][i]) {//if rainVolume data avaliable 
+			hourlyWeatherData["rainVolume"] = OneCallWeatherInfo["hourly"][i]["rain"]["1h"]; //rain volume in last hour in mm
+		}
+		
+		if ("snow" in OneCallWeatherInfo["hourly"][i]) { //if snowVolume data avaliable 
+			hourlyWeatherData["snowVolume"] =  OneCallWeatherInfo["hourly"][i]["snow"]["1h"]; //snow volume in last hour in mm
+		}
+		simplifiedOneCallWeatherData[1]["hourly"].push(hourlyWeatherData);
+	}
+
+	for (var i=0; i<OneCallWeatherInfo["daily"].length; i++) {
+		var dailyWeatherData = {};
+		//note: 
+		//dateTime is the time of the weather entry in the user's local time.
+		//sunriseTime and sunsetTime are the times of sunrise and sunset in the time zone of the city entered
+		dailyWeatherData["datetime"] = convertToSpecifiedTimeZone(new Date(OneCallWeatherInfo["daily"][i]["dt"]*1000), browserTimeZone); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time
+		dailyWeatherData["sunriseTime"] = convertToSpecifiedTimeZone(new Date(OneCallWeatherInfo["daily"][i]["sunrise"]*1000), OneCallWeatherInfo["timezone"]); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time
+		dailyWeatherData["sunsetTime"] = convertToSpecifiedTimeZone(new Date(OneCallWeatherInfo["daily"][i]["sunset"]*1000), OneCallWeatherInfo["timezone"]); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time
+		dailyWeatherData["morningTemp"] = OneCallWeatherInfo["daily"][i]["temp"]["morn"] - 273.15;
+		dailyWeatherData["feelsLikeMorningTemp"] = OneCallWeatherInfo["daily"][i]["feels_like"]["morn"] - 273.15;
+		dailyWeatherData["afternoonTemp"] = OneCallWeatherInfo["daily"][i]["temp"]["day"] - 273.15;
+		dailyWeatherData["feelsLikeAfternoonTemp"] = OneCallWeatherInfo["daily"][i]["feels_like"]["day"] - 273.15;
+		dailyWeatherData["eveningTemp"] = OneCallWeatherInfo["daily"][i]["temp"]["eve"] - 273.15;
+		dailyWeatherData["feelsLikeEveningTemp"] = OneCallWeatherInfo["daily"][i]["feels_like"]["eve"] - 273.15;
+		dailyWeatherData["nightTemp"] = OneCallWeatherInfo["daily"][i]["temp"]["night"] - 273.15;
+		dailyWeatherData["feelsLikeNightTemp"] = OneCallWeatherInfo["daily"][i]["feels_like"]["night"] - 273.15;
+		dailyWeatherData["dailyMinTemp"] = OneCallWeatherInfo["daily"][i]["temp"]["min"] - 273.15;
+		dailyWeatherData["dailyMaxTemp"] = OneCallWeatherInfo["daily"][i]["temp"]["max"] - 273.15;
+		dailyWeatherData["humidity"] = OneCallWeatherInfo["daily"][i]["humidity"];
+		dailyWeatherData["pressure"] = OneCallWeatherInfo["daily"][i]["pressure"]/10; //convert hectopascal to kilopascal
+		dailyWeatherData["windSpeed"] = OneCallWeatherInfo["daily"][i]["wind_speed"]*3.6; //convert m/s to km/h
+		dailyWeatherData["windGustSpeed"] = OneCallWeatherInfo["daily"][i]["wind_gust"]*3.6; //WHERE AVALIABLE //convert m/s to km/h
+		dailyWeatherData["description"] = OneCallWeatherInfo["daily"][i]["weather"]["description"];
+		dailyWeatherData["cloudCover"] = OneCallWeatherInfo["daily"][i]["clouds"] * 100; //convert decimal to %
+		dailyWeatherData["precipitationChance"] = OneCallWeatherInfo["daily"][i]["pop"]*100; //convert decimal to %
+		dailyWeatherData["rainVolume"] = OneCallWeatherInfo["daily"][i]["rain"]; //WHERE AVALIABLE //unit: mm
+		dailyWeatherData["snowVolume"] = OneCallWeatherInfo["daily"][i]["snow"]; //WHERE AVALIABLE //unit: mm
+		dailyWeatherData["UVIndex"] = OneCallWeatherInfo["daily"][i]["uvi"];
+
+		if ("wind_gust" in OneCallWeatherInfo["daily"][i]) { //if wind_gust data avaliable
+			dailyWeatherData["windGustSpeed"] = OneCallWeatherInfo["daily"][i]["wind_gust"]*3.6; //convert m/s to km/h; average daily wind gust speed
+		}	
+
+		if ("rain" in OneCallWeatherInfo["daily"][i]) {//if rainVolume data avaliable 
+			dailyWeatherData["rainVolume"] = OneCallWeatherInfo["daily"][i]["rain"]["1h"]; //rain volume in last hour in mm
+		}
+		
+		if ("snow" in OneCallWeatherInfo["daily"][i]) { //if snowVolume data avaliable 
+			dailyWeatherData["snowVolume"] =  OneCallWeatherInfo["daily"][i]["snow"]["1h"]; //snow volume in last hour in mm
+		}
+		simplifiedOneCallWeatherData[2]["daily"].push(dailyWeatherData);
+ 	}	
 };
 
 function useJSONData() {
@@ -89,10 +227,9 @@ function useJSONData() {
 function simplifyWeatherData(FiveDayWeatherInfo) {
 	//FiveDayWeatherInfo is a list of the information of each day for 5 days of a particular city
 
-	for (i=0; i<FiveDayWeatherInfo["list"].length; i++) {
-		var weatherDataAtOneTime = {};
-		date = new Date(FiveDayWeatherInfo["list"][i]["dt"]*1000); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time
-		weatherDataAtOneTime["dateTime"] = convertToLocalTime(date);
+	for (var i=0; i<FiveDayWeatherInfo["list"].length; i++) {
+		var weatherDataAtOneTime = {}; 
+		weatherDataAtOneTime["dateTime"] = convertToSpecifiedTimeZone(new Date(FiveDayWeatherInfo["list"][i]["dt"]*1000), browserTimeZone); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time
 		weatherDataAtOneTime["currentTemp"] = FiveDayWeatherInfo["list"][i]["main"]["temp"] - 273.15;
 		weatherDataAtOneTime["feelsLikeTemp"] = FiveDayWeatherInfo["list"][i]["main"]["feels_like"] - 273.15;
 		weatherDataAtOneTime["temp_min"] = FiveDayWeatherInfo["list"][i]["main"]["temp_min"] - 273.15;
@@ -109,8 +246,8 @@ function simplifyWeatherData(FiveDayWeatherInfo) {
 	}	
 };
 
-function convertToLocalTime(inputDate) {
-	return inputDate.toLocaleString("en-US", {timeZone: browserTimeZone});
+function convertToSpecifiedTimeZone(inputDate, inputTimeZone) {
+	return inputDate.toLocaleString("en-US", {timeZone: inputTimeZone});
 };
 
 function getCoordinates(city, country) {
