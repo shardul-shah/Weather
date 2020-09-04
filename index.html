@@ -21,6 +21,8 @@
 		<script type='text/javascript' src='scripts/config.js'></script>
 		<script type="text/javascript" src="scripts/retrieveWeather.js" defer>
 		</script>
+		<!--<script type="text/javascript" src="scripts/PromiseTest.js" defer>
+		</script>-->
 		<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCTWMOEVXf6COc879LAkU8miQchsR-GZJE&libraries=places&callback=activatePlacesSearch" defer>
 		</script>
 		<!-- hide the above key and make the script initialization in JavaScript later FIXME -->
@@ -74,6 +76,7 @@
 				<label for="physical_location">Enter Location Here: </label>
 				<input type="text" id="physical_location" value="Edmonton, Canada" name="physical_location">
 				<button onclick="retrieveJSONData()"> Search </button>
+				<button onclick="test()"> Search </button>
 			</div>
 	</body>
 </html>

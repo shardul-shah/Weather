@@ -1,9 +1,11 @@
 var FiveDayWeatherInfo = {}; 
 var OneCallWeatherInfo = {};
 var historicalOneCallWeatherInfo = [];
+
 var simplifiedFiveDayWeatherData = [];
 var simplifiedOneCallWeatherData = [{"current": []}, {"hourly": []}, {"daily": []}];
 var simplifiedHistoricalOneCallWeatherData = []; //only stores historical hourly data. This variable is a list of lists of dictionaries. Each list in this list represents one day of past weather information.
+
 const browserTimeZone  = Intl.DateTimeFormat().resolvedOptions().timeZone;
 var weather_API_key = config.WEATHER_API_KEY; //FIXME, hide API key
 var google_API_key = config.GOOGLE_API_KEY; //FIXME, hide API key
@@ -16,74 +18,98 @@ var coordinates = {};
 //(CHECK AVALIABLE TAGS) Wind gust, daily.rain, daily.snow is not avaliable everywhere, maybe adjust it for places that don't have wind gust data or remove that completely
 
 function retrieveJSONData() {
+	//everytime weather information is retrieved for a city, the following global variables must be reinitialized to being empty
+	simplifiedFiveDayWeatherData = [];
+	simplifiedOneCallWeatherData = [{"current": []}, {"hourly": []}, {"daily": []}];
+	simplifiedHistoricalOneCallWeatherData = []; //only stores historical hourly data. This variable is a list of lists of dictionaries. Each list in this list represents one day of past weather information.
+	historicalOneCallWeatherInfo = []; //furthermore, this variable must be reinitialized to empty as the JSON data is pushed to the list, not assigned
+
 	var physical_location = document.getElementById("physical_location").value;
 	var API_appid = "&APPID=" + weather_API_key;
 	var API_url_5Day = "http://api.openweathermap.org/data/2.5/forecast?q=";
 	var city="edmonton"; //FIXME
 	var country="canada"; //FIXME
-	geoCodeUrl = "https://maps.googleapis.com/maps/api/geocode/json?address="+city+country+"&key="+google_API_key;
-	$.getJSON(geoCodeUrl, function(data) {
+	var geoCodeUrl = "https://maps.googleapis.com/maps/api/geocode/json?address="+city+country+"&key="+google_API_key;
+
+
+	$.getJSON(geoCodeUrl).done(function(data) {
 		coordinates["longitude"] = data["results"][0]["geometry"]["location"]["lng"];
 		coordinates["latitude"] = data["results"][0]["geometry"]["location"]["lat"];
-		retrieveOneCallJSONData();
-	});
+		//retrieveOneCallJSONData();
+	}).then(function() {
+  		//present+Future data API call
+		var API_appid = "&APPID=" + weather_API_key; //can make this const global later  (and other variables)
+		var excludeMinutelyData = "&exclude=minutely"; 
+		//the purpose of this is to exclude minutely data as it is not avaliable for every city/region in the world in this API, which makes data inconsistent (furthermore, it is not needed for a typical weather app)
+		var API_url_OneCall = "http://api.openweathermap.org/data/2.5/onecall?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+ excludeMinutelyData+ API_appid;
+		console.log(API_url_OneCall);
+		console.log(coordinates);
 
-	api_url = API_url_5Day + physical_location + API_appid;
-	$.getJSON(api_url, function(data) {
+		$.getJSON(API_url_OneCall).done(function(data) {
+		OneCallWeatherInfo = data;
+		/*then() used to ensure  */
+		}).then(function() {
+			console.log(OneCallWeatherInfo);
+			simplifyOneCallWeatherData(OneCallWeatherInfo);
+			console.log(simplifiedOneCallWeatherData);
+		});
+
+		//past data API call
+		var currentEpochTime = Math.floor((new Date()).getTime()/1000); //find currentEpochTime in seconds (divide by 1000 for ms -> s)
+		const numSecondsInOneDay = 86400;
+		var promises = [];
+		for (let i=0; i<6; i++) { //retrieve weather information for some hours of today and the last 5 days before today
+			var API_url_Historical_OneCall = "http://api.openweathermap.org/data/2.5/onecall/timemachine?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+"&dt="+currentEpochTime+API_appid;
+			// $.getJSON returns a promise
+			promises.push($.getJSON(API_url_Historical_OneCall));
+			console.log(new Date(currentEpochTime*1000));
+			console.log(API_url_Historical_OneCall);
+			//console.log(currentEpochTime);
+			currentEpochTime-=numSecondsInOneDay; //go back a day to retrieve the weather information for the past day
+		}
+
+		$.when.apply($, promises).then(function(){
+		    // This callback will be passed the result of each AJAX call as a parameter
+		    for(var i = 0; i < arguments.length; i++) {
+		        // arguments[i][0] is needed because each argument
+		        // is an array of 3 elements.
+		        // The data, the status, and the jqXHR object
+		        historicalOneCallWeatherInfo.push(arguments[i][0]);
+    		}
+   	 		console.log(historicalOneCallWeatherInfo);
+		}).then(function() {
+			console.log(historicalOneCallWeatherInfo);
+			console.log(historicalOneCallWeatherInfo.length.toString());
+			simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo);
+			console.log(simplifiedHistoricalOneCallWeatherData);
+		});
+		
+
+		api_url = API_url_5Day + physical_location + API_appid;
+		$.getJSON(api_url).done(function(data) {
 		FiveDayWeatherInfo = data;
 		/*the use of another function in the callback function to ensure FiveDayWeatherInfo gets updated from the first time 
 		retrieveJSONData() is called (without promises). This is because of the unexpected behaviour resulting from the innate nature
 		of JavaScript and callback functions being asynchronous. See: https://stackoverflow.com/questions/14220321/how-do-i-return-the-response-from-an-asynchronous-call
 		Using a function to ensure synchronousity is important */
 		//Side note: the importance of asychronousity is important on web browsers, as seen in the link above.
-		useJSONData();
-	});
-};
-
-function retrieveOneCallJSONData() {
-	//present+Future data API call
-
-	var API_appid = "&APPID=" + weather_API_key; //can make this const global later  (and other variables)
-	var excludeMinutelyData = "&exclude=minutely"; 
-	//the purpose of this is to exclude minutely data as it is not avaliable for every city/region in the world in this API, which makes data inconsistent (furthermore, it is not needed for a typical weather app)
-	var API_url_OneCall = "http://api.openweathermap.org/data/2.5/onecall?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+ excludeMinutelyData+ API_appid;
-	console.log(API_url_OneCall);
-	console.log(coordinates);
-
-	//past data API call
-	var currentEpochTime = Math.floor((new Date()).getTime()/1000); //find currentEpochTime in seconds (divide by 1000 for ms -> s)
-	const numSecondsInOneDay = 86400;
-	for (let i=0; i<6; i++) { //retrieve weather information for some hours of today and the last 5 days before today
-		var API_url_Historical_OneCall = "http://api.openweathermap.org/data/2.5/onecall/timemachine?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+"&dt="+currentEpochTime+API_appid;
-		$.getJSON(API_url_Historical_OneCall, function(data) {
-		historicalOneCallWeatherInfo.push(data);
+		}).then(function() { 
+		simplifyWeatherData(FiveDayWeatherInfo);
+		}).then(function() { //FIXME UNSURE IF THESE THENS AFTER THE SIMPLIFY...DATA ARE NECCESARY (HERE AND ABOVE)
+		document.getElementById("testp3").innerHTML = JSON.stringify(simplifiedFiveDayWeatherData);
+		console.log(simplifiedFiveDayWeatherData);
 		});
-		console.log(new Date(currentEpochTime*1000));
-		console.log(API_url_Historical_OneCall);
-		//console.log(currentEpochTime);
-		currentEpochTime-=numSecondsInOneDay; //go back a day to retrieve the weather information for the past day
-	}
-	console.log(historicalOneCallWeatherInfo);
-	console.log(historicalOneCallWeatherInfo.length);
 
-	$.getJSON(API_url_OneCall, function(data) {
-		OneCallWeatherInfo = data;
-		/*the use of another function in the callback function to ensure OneCallJSONData gets updated from the first time 
-		retrieveOneCallJSONData() is called (without promises). This is because of the unexpected behaviour resulting from the innate nature
-		of JavaScript and callback functions being asynchronous. See: https://stackoverflow.com/questions/14220321/how-do-i-return-the-response-from-an-asynchronous-call
-		Using a function to ensure synchronousity is important */
-		//Side note: the importance of asychronousity is important on web browsers, as seen in the link above.
-		useOneCallJSONData();
+	}).then(function() {
+  		console.log("last:" + new Date().getTime())
 	});
 };
 
-function useOneCallJSONData() {
-	console.log(OneCallWeatherInfo);
-	simplifyOneCallWeatherData(OneCallWeatherInfo);
+function test() {
+	console.log(simplifiedFiveDayWeatherData);
 	console.log(simplifiedOneCallWeatherData);
-	simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo);
 	console.log(simplifiedHistoricalOneCallWeatherData);
-};
+}
 
 function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
 	//historicalOneCallWeatherInfo is a list of the information of weather of a particular city, including:
@@ -93,6 +119,10 @@ function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
 	console.log(historicalOneCallWeatherInfo.length.toString());
 	for (var j = 0; j<historicalOneCallWeatherInfo.length; j++) {
 		var historicalDailyWeatherData = []; //weatherData for one day
+
+		if (!("hourly" in historicalOneCallWeatherInfo[j])) {
+			continue;
+		}
 
 		for (var i = 0; i<historicalOneCallWeatherInfo[j]["hourly"].length; i++) {
 			var historicalHourlyWeatherData = {}; //weatherData for one hour
@@ -214,14 +244,6 @@ function simplifyOneCallWeatherData(OneCallWeatherInfo) {
 		}
 		simplifiedOneCallWeatherData[2]["daily"].push(dailyWeatherData);
  	}	
-};
-
-function useJSONData() {
-	//console.log(FiveDayWeatherInfo);
-	//console.log(typeof FiveDayWeatherInfo);
-	simplifyWeatherData(FiveDayWeatherInfo);
-	document.getElementById("testp3").innerHTML = JSON.stringify(simplifiedFiveDayWeatherData);
-	//console.log(simplifiedFiveDayWeatherData)
 };
 
 function simplifyWeatherData(FiveDayWeatherInfo) {
