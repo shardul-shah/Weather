@@ -15,7 +15,9 @@ var coordinates = {};
 //perhaps add local time zone (e.g. PST) when outputting the time/date for the user
 //use weatherAPI icons/id for pictures in the app
 //Convert units from imperial to metric and metric to imperial depending on user preferences (maybe a switch).
-//(CHECK AVALIABLE TAGS) Wind gust, daily.rain, daily.snow is not avaliable everywhere, maybe adjust it for places that don't have wind gust data or remove that completely
+//FIXME: DONE(CHECK AVALIABLE TAGS) Wind gust, daily.rain, daily.snow is not avaliable everywhere, maybe adjust it for places that don't have wind gust data or remove that completely
+//Separate Google GeoCoding & Places/Maps API and then restrict Places/Maps to your web URL only and try to find a way to restrict Google GeoCoding service to an IP address only (as it cannot be restricted otherwise: https://stackoverflow.com/questions/50187750/restricted-google-api-key-is-not-working-in-reverse-geocoding)
+
 
 function retrieveJSONData() {
 	//everytime weather information is retrieved for a city, the following global variables must be reinitialized to being empty
@@ -86,6 +88,7 @@ function retrieveJSONData() {
 		
 
 		api_url = API_url_5Day + physical_location + API_appid;
+		console.log(api_url);
 		$.getJSON(api_url).done(function(data) {
 		FiveDayWeatherInfo = data;
 		/*the use of another function in the callback function to ensure FiveDayWeatherInfo gets updated from the first time 
@@ -112,7 +115,7 @@ function test() {
 }
 
 function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
-	//historicalOneCallWeatherInfo is a list of the information of weather of a particular city, including:
+	//historicalOneCallWeatherInfo is a list of the past 5 days and  current day of the information of weather of a particular city, including:
 	//-Weather at the requested time - "current" (I will not be storing this)
 	//-Hourly weather information for the day of the requested time (I will be storing this)
 	console.log(JSON.stringify(historicalOneCallWeatherInfo));
@@ -131,11 +134,24 @@ function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
 			historicalHourlyWeatherData["feelsLikeTemp"] = historicalOneCallWeatherInfo[j]["hourly"][i]["feels_like"] - 273.15;
 			historicalHourlyWeatherData["seaLevelPressure"] = historicalOneCallWeatherInfo[j]["hourly"][i]["pressure"]/10; //convert hectopascal to kilopascal
 			historicalHourlyWeatherData["humidity"] = historicalOneCallWeatherInfo[j]["hourly"][i]["humidity"];
-			historicalHourlyWeatherData["description"] = historicalOneCallWeatherInfo[j]["hourly"][i]["weather"]["description"];
+			historicalHourlyWeatherData["description"] = historicalOneCallWeatherInfo[j]["hourly"][i]["weather"][0]["description"];
 			historicalHourlyWeatherData["windSpeed"] = historicalOneCallWeatherInfo[j]["hourly"][i]["wind_speed"]*3.6; //convert m/s to km/h
 			historicalHourlyWeatherData["visibility"] = historicalOneCallWeatherInfo[j]["hourly"][i]["visibility"]; //visibility in meters
 			historicalHourlyWeatherData["precipitationChance"] = historicalOneCallWeatherInfo[j]["hourly"][i]["pop"] * 100; //convert decimal to %
-			historicalHourlyWeatherData["cloudCover"] = historicalOneCallWeatherInfo[j]["hourly"][i]["clouds"]["all"] * 100; //convert decimal to %
+			historicalHourlyWeatherData["cloudCover"] = historicalOneCallWeatherInfo[j]["hourly"][i]["clouds"];
+
+			if ("rain" in historicalOneCallWeatherInfo[j]["hourly"][i]) {	//if rainVolume data avaliable 
+				historicalHourlyWeatherData["rainVolume"] = historicalOneCallWeatherInfo[j]["hourly"][i]["rain"]; //rain volume in last hour in mm
+			}
+		
+			if ("snow" in historicalOneCallWeatherInfo[j]["hourly"][i]) { //if snowVolume data avaliable 
+				historicalHourlyWeatherData["snowVolume"] =  historicalOneCallWeatherInfo[j]["hourly"][i]["snow"]; //snow volume in last hour in mm
+			}
+
+			if ("wind_gust" in historicalOneCallWeatherInfo[j]["hourly"][i]) { //if snowVolume data avaliable 
+				historicalHourlyWeatherData["windGustSpeed"] =  historicalOneCallWeatherInfo[j]["hourly"][i]["wind_gust"]; //snow volume in last hour in mm
+			}			
+
 			historicalDailyWeatherData.push(historicalHourlyWeatherData);
 		}
 		simplifiedHistoricalOneCallWeatherData.push(historicalDailyWeatherData);	
@@ -156,7 +172,7 @@ function simplifyOneCallWeatherData(OneCallWeatherInfo) {
 	currentWeatherData["feelsLikeTemp"] = OneCallWeatherInfo["current"]["feels_like"] - 273.15;
 	currentWeatherData["seaLevelPressure"] = OneCallWeatherInfo["current"]["pressure"]/10; // convert hectopascal to kilopascal
 	currentWeatherData["UVIndex"] = OneCallWeatherInfo["current"]["uvi"];
-	currentWeatherData["cloudCover"] = OneCallWeatherInfo["current"]["clouds"]*100; //convert decimal to %
+	currentWeatherData["cloudCover"] = OneCallWeatherInfo["current"]["clouds"];
 	currentWeatherData["visibility"] = OneCallWeatherInfo["current"]["visibility"]; //visibility in meters
 	currentWeatherData["windSpeed"] = OneCallWeatherInfo["current"]["wind_speed"]*3.6; //convert m/s to km/h
 	currentWeatherData["description"] = OneCallWeatherInfo["current"]["weather"][0]["description"];
@@ -182,7 +198,7 @@ function simplifyOneCallWeatherData(OneCallWeatherInfo) {
 		hourlyWeatherData["feelsLikeTemp"] = OneCallWeatherInfo["hourly"][i]["feels_like"] - 273.15;
 		hourlyWeatherData["seaLevelPressure"] = OneCallWeatherInfo["hourly"][i]["pressure"]/10; //convert hectopascal to kilopascal
 		hourlyWeatherData["humidity"] = OneCallWeatherInfo["hourly"][i]["humidity"];
-		hourlyWeatherData["cloudCover"] = OneCallWeatherInfo["hourly"][i]["clouds"] * 100; //convert decimal to %
+		hourlyWeatherData["cloudCover"] = OneCallWeatherInfo["hourly"][i]["clouds"];
 		hourlyWeatherData["visibility"] = OneCallWeatherInfo["hourly"][i]["visibility"]; //visibility in meters
 		hourlyWeatherData["windSpeed"] = OneCallWeatherInfo["hourly"][i]["wind_speed"] * 3.6; //convert m/s to km/h
 		hourlyWeatherData["description"] = OneCallWeatherInfo["hourly"][i]["weather"][0]["description"];
@@ -223,12 +239,9 @@ function simplifyOneCallWeatherData(OneCallWeatherInfo) {
 		dailyWeatherData["humidity"] = OneCallWeatherInfo["daily"][i]["humidity"];
 		dailyWeatherData["pressure"] = OneCallWeatherInfo["daily"][i]["pressure"]/10; //convert hectopascal to kilopascal
 		dailyWeatherData["windSpeed"] = OneCallWeatherInfo["daily"][i]["wind_speed"]*3.6; //convert m/s to km/h
-		dailyWeatherData["windGustSpeed"] = OneCallWeatherInfo["daily"][i]["wind_gust"]*3.6; //WHERE AVALIABLE //convert m/s to km/h
-		dailyWeatherData["description"] = OneCallWeatherInfo["daily"][i]["weather"]["description"];
-		dailyWeatherData["cloudCover"] = OneCallWeatherInfo["daily"][i]["clouds"] * 100; //convert decimal to %
+		dailyWeatherData["description"] = OneCallWeatherInfo["daily"][i]["weather"][0]["description"];
+		dailyWeatherData["cloudCover"] = OneCallWeatherInfo["daily"][i]["clouds"];
 		dailyWeatherData["precipitationChance"] = OneCallWeatherInfo["daily"][i]["pop"]*100; //convert decimal to %
-		dailyWeatherData["rainVolume"] = OneCallWeatherInfo["daily"][i]["rain"]; //WHERE AVALIABLE //unit: mm
-		dailyWeatherData["snowVolume"] = OneCallWeatherInfo["daily"][i]["snow"]; //WHERE AVALIABLE //unit: mm
 		dailyWeatherData["UVIndex"] = OneCallWeatherInfo["daily"][i]["uvi"];
 
 		if ("wind_gust" in OneCallWeatherInfo["daily"][i]) { //if wind_gust data avaliable
@@ -236,11 +249,11 @@ function simplifyOneCallWeatherData(OneCallWeatherInfo) {
 		}	
 
 		if ("rain" in OneCallWeatherInfo["daily"][i]) {//if rainVolume data avaliable 
-			dailyWeatherData["rainVolume"] = OneCallWeatherInfo["daily"][i]["rain"]["1h"]; //rain volume in last hour in mm
+			dailyWeatherData["rainVolume"] = OneCallWeatherInfo["daily"][i]["rain"]; //rain volume in last hour in mm
 		}
 		
 		if ("snow" in OneCallWeatherInfo["daily"][i]) { //if snowVolume data avaliable 
-			dailyWeatherData["snowVolume"] =  OneCallWeatherInfo["daily"][i]["snow"]["1h"]; //snow volume in last hour in mm
+			dailyWeatherData["snowVolume"] =  OneCallWeatherInfo["daily"][i]["snow"]; //snow volume in last hour in mm
 		}
 		simplifiedOneCallWeatherData[2]["daily"].push(dailyWeatherData);
  	}	
@@ -258,11 +271,20 @@ function simplifyWeatherData(FiveDayWeatherInfo) {
 		weatherDataAtOneTime["temp_max"] = FiveDayWeatherInfo["list"][i]["main"]["temp_max"] - 273.15;
 		weatherDataAtOneTime["seaLevelPressure"] = FiveDayWeatherInfo["list"][i]["main"]["pressure"]/10; //convert hectopascal to kilopascal
 		weatherDataAtOneTime["humidity"] = FiveDayWeatherInfo["list"][i]["main"]["humidity"];
-		weatherDataAtOneTime["description"] = FiveDayWeatherInfo["list"][i]["weather"]["description"];
+		weatherDataAtOneTime["description"] = FiveDayWeatherInfo["list"][i]["weather"][0]["description"];
 		weatherDataAtOneTime["windSpeed"] = FiveDayWeatherInfo["list"][i]["wind"]["speed"]*3.6; //convert m/s to km/h
 		weatherDataAtOneTime["visibility"] = FiveDayWeatherInfo["list"][i]["visibility"]; //visibility in meters
 		weatherDataAtOneTime["precipitationChance"] = FiveDayWeatherInfo["list"][i]["pop"] * 100; //convert decimal to %
-		weatherDataAtOneTime["cloudCover"] = FiveDayWeatherInfo["list"][i]["clouds"]["all"] * 100; //convert decimal to %
+		weatherDataAtOneTime["cloudCover"] = FiveDayWeatherInfo["list"][i]["clouds"]["all"];
+
+		if ("rain" in FiveDayWeatherInfo["list"][i]) {//if rainVolume data avaliable 
+			weatherDataAtOneTime["rainVolume"] = FiveDayWeatherInfo["list"][i]["rain"]["3h"]; //rain volume in last hour in mm
+		}
+
+		if ("snow" in FiveDayWeatherInfo["list"][i]) {//if rainVolume data avaliable 
+			weatherDataAtOneTime["snowVolume"] = FiveDayWeatherInfo["list"][i]["snow"]["3h"]; //rain volume in last hour in mm
+		}
+
 		simplifiedFiveDayWeatherData.push(weatherDataAtOneTime);
 		//console.log(weatherDataAtOneTime);
 	}	
