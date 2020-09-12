@@ -26,7 +26,7 @@ function retrieveJSONData() {
 
 	var physical_location = document.getElementById("physical_location").value;
 	var API_appid = "&APPID=" + weather_API_key;
-	var API_url_5Day = "http://api.openweathermap.org/data/2.5/forecast?q=";
+	var API_url_5Day = "https://api.openweathermap.org/data/2.5/forecast?q=";
 	var city="edmonton"; //FIXME
 	var country="canada"; //FIXME
 	var geoCodeUrl = "https://maps.googleapis.com/maps/api/geocode/json?address="+city+country+"&key="+google_API_key;
@@ -41,7 +41,7 @@ function retrieveJSONData() {
 		var API_appid = "&APPID=" + weather_API_key; //can make this const global later  (and other variables)
 		var excludeMinutelyData = "&exclude=minutely"; 
 		//the purpose of this is to exclude minutely data as it is not avaliable for every city/region in the world in this API, which makes data inconsistent (furthermore, it is not needed for a typical weather app)
-		var API_url_OneCall = "http://api.openweathermap.org/data/2.5/onecall?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+ excludeMinutelyData+ API_appid;
+		var API_url_OneCall = "https://api.openweathermap.org/data/2.5/onecall?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+ excludeMinutelyData+ API_appid;
 		console.log(API_url_OneCall);
 		console.log(coordinates);
 
@@ -59,7 +59,7 @@ function retrieveJSONData() {
 		const numSecondsInOneDay = 86400;
 		var promises = [];
 		for (let i=0; i<6; i++) { //retrieve weather information for some hours of today and the last 5 days before today
-			var API_url_Historical_OneCall = "http://api.openweathermap.org/data/2.5/onecall/timemachine?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+"&dt="+currentEpochTime+API_appid;
+			var API_url_Historical_OneCall = "https://api.openweathermap.org/data/2.5/onecall/timemachine?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+"&dt="+currentEpochTime+API_appid;
 			// $.getJSON returns a promise
 			promises.push($.getJSON(API_url_Historical_OneCall));
 			console.log(new Date(currentEpochTime*1000));
