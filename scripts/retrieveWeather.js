@@ -1,3 +1,4 @@
+//GLOBALS
 var FiveDayWeatherInfo = {}; 
 var OneCallWeatherInfo = {};
 var historicalOneCallWeatherInfo = [];
@@ -17,7 +18,7 @@ var coordinates = {};
 //Convert units from imperial to metric and metric to imperial depending on user preferences (maybe a switch).
 //FIXME: DONE(CHECK AVALIABLE TAGS) Wind gust, daily.rain, daily.snow is not avaliable everywhere, maybe adjust it for places that don't have wind gust data or remove that completely
 //Separate Google GeoCoding & Places/Maps API and then restrict Places/Maps to your web URL only and try to find a way to restrict Google GeoCoding service to an IP address only (as it cannot be restricted otherwise: https://stackoverflow.com/questions/50187750/restricted-google-api-key-is-not-working-in-reverse-geocoding)
-
+//make decision on whether to restrict searches to only showing city results or allow any type of search, but make a function to allow only the city to be used in the API_url
 
 function retrieveJSONData() {
 	//everytime weather information is retrieved for a city, the following global variables must be reinitialized to being empty
@@ -37,19 +38,19 @@ function retrieveJSONData() {
 	$.getJSON(geoCodeUrl).done(function(data) {
 		coordinates["longitude"] = data["results"][0]["geometry"]["location"]["lng"];
 		coordinates["latitude"] = data["results"][0]["geometry"]["location"]["lat"];
-		//retrieveOneCallJSONData();
+
+	// then() used often to ensure order in asyncronousity of getJSON calls throughout this function
+
 	}).then(function() {
   		//present+Future data API call
 		var API_appid = "&APPID=" + weather_API_key; //can make this const global later  (and other variables)
-		var excludeMinutelyData = "&exclude=minutely"; 
-		//the purpose of this is to exclude minutely data as it is not avaliable for every city/region in the world in this API, which makes data inconsistent (furthermore, it is not needed for a typical weather app)
+		var excludeMinutelyData = "&exclude=minutely"; 	//the purpose of this is to exclude minutely data as it is not avaliable for every city/region in the world in this API, which makes data inconsistent (furthermore, it is not needed for a typical weather app)
 		var API_url_OneCall = "https://api.openweathermap.org/data/2.5/onecall?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+ excludeMinutelyData+ API_appid;
 		console.log(API_url_OneCall);
 		console.log(coordinates);
 
 		$.getJSON(API_url_OneCall).done(function(data) {
 		OneCallWeatherInfo = data;
-		/*then() used to ensure  */
 		}).then(function() {
 			console.log(OneCallWeatherInfo);
 			simplifyOneCallWeatherData(OneCallWeatherInfo);
@@ -64,9 +65,7 @@ function retrieveJSONData() {
 			var API_url_Historical_OneCall = "https://api.openweathermap.org/data/2.5/onecall/timemachine?lat="+coordinates["latitude"]+"&lon="+coordinates["longitude"]+"&dt="+currentEpochTime+API_appid;
 			// $.getJSON returns a promise
 			promises.push($.getJSON(API_url_Historical_OneCall));
-			console.log(new Date(currentEpochTime*1000));
 			console.log(API_url_Historical_OneCall);
-			//console.log(currentEpochTime);
 			currentEpochTime-=numSecondsInOneDay; //go back a day to retrieve the weather information for the past day
 		}
 
@@ -78,17 +77,11 @@ function retrieveJSONData() {
 		        // The data, the status, and the jqXHR object
 		        historicalOneCallWeatherInfo.push(arguments[i][0]);
     		}
-   	 		console.log(historicalOneCallWeatherInfo);
 		}).then(function() {
-			console.log(historicalOneCallWeatherInfo);
-			console.log(historicalOneCallWeatherInfo.length.toString());
 			simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo);
-			console.log(simplifiedHistoricalOneCallWeatherData);
 		});
 		
-
 		api_url = API_url_5Day + physical_location + API_appid;
-		console.log(api_url);
 		$.getJSON(api_url).done(function(data) {
 		FiveDayWeatherInfo = data;
 		/*the use of another function in the callback function to ensure FiveDayWeatherInfo gets updated from the first time 
@@ -100,10 +93,10 @@ function retrieveJSONData() {
 		simplifyWeatherData(FiveDayWeatherInfo);
 		}).then(function() { //FIXME UNSURE IF THESE THENS AFTER THE SIMPLIFY...DATA ARE NECCESARY (HERE AND ABOVE)
 		document.getElementById("testp3").innerHTML = JSON.stringify(simplifiedFiveDayWeatherData);
-		console.log(simplifiedFiveDayWeatherData);
 		});
 
 	}).then(function() {
+  		//FIXME only for testing purposes
   		console.log("last:" + new Date().getTime())
 	});
 };
@@ -156,8 +149,6 @@ function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
 		}
 		simplifiedHistoricalOneCallWeatherData.push(historicalDailyWeatherData);	
 	}
-	console.log(simplifiedHistoricalOneCallWeatherData);
-	console.log(historicalOneCallWeatherInfo.length);
 };
 
 function simplifyOneCallWeatherData(OneCallWeatherInfo) {
@@ -286,7 +277,6 @@ function simplifyWeatherData(FiveDayWeatherInfo) {
 		}
 
 		simplifiedFiveDayWeatherData.push(weatherDataAtOneTime);
-		//console.log(weatherDataAtOneTime);
 	}	
 };
 
