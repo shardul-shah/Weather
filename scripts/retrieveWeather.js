@@ -288,6 +288,7 @@ function convertUnits(unitSystemToConvertTo, unitType, value) {
 
 	if (unitSystemToConvertTo == "metric") {
 	//note, by default through the weather API data, snow & rain volume is in millimeters, and visibility is in meters (both metric).
+		
 		if (unitType == "temperature") {
 			return value - 273.15; //convert Kelvin to Celsius
 		}
