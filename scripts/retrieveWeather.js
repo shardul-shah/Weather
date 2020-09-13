@@ -1,12 +1,16 @@
 //GLOBALS
+
+//Unsimplified, Raw JSON Weather Data
 var FiveDayWeatherInfo = {}; 
 var OneCallWeatherInfo = {};
 var historicalOneCallWeatherInfo = [];
 
+//Simplified JSON Weather Data
 var simplifiedFiveDayWeatherData = [];
 var simplifiedOneCallWeatherData = [{"current": []}, {"hourly": []}, {"daily": []}];
 var simplifiedHistoricalOneCallWeatherData = []; //only stores historical hourly data. This variable is a list of lists of dictionaries. Each list in this list represents one day of past weather information.
 
+//Core Variables
 const browserTimeZone  = Intl.DateTimeFormat().resolvedOptions().timeZone;
 var weather_API_key = config.WEATHER_API_KEY; //FIXME, hide API key
 var google_API_key = config.GOOGLE_API_KEY; //FIXME, hide API key
@@ -16,13 +20,12 @@ var country_name = "";
 
 
 //TODO LIST
-//perhaps add local time zone label (e.g. PST) when outputting the time/date for the user (OR MAKE A NOTE specifying the sunset/sunrise time zone and all other times' time zones to the user)
+//perhaps add local time zone label (e.g. PST) when outputting the time/date for the user (FIXME OR MAKE A NOTE specifying the sunset/sunrise time zone and all other times' time zones to the user)
 //use weatherAPI icons/id for pictures in the app
 //Separate Google GeoCoding & Places/Maps API and then restrict Places/Maps to your web URL only and try to find a way to restrict Google GeoCoding service to an IP address only (as it cannot be restricted otherwise: https://stackoverflow.com/questions/50187750/restricted-google-api-key-is-not-working-in-reverse-geocoding)
 //Make use of unit conversion function for imperial/metric and remove manual conversion from code
 
-
-function retrieveJSONData() {
+function retrieveAndStoreJSOnData() {
 	//everytime weather information is retrieved for a city, the following global variables must be reinitialized to being empty
 	simplifiedFiveDayWeatherData = [];
 	simplifiedOneCallWeatherData = [{"current": []}, {"hourly": []}, {"daily": []}];
@@ -85,13 +88,8 @@ function retrieveJSONData() {
 		api_url = API_url_5Day + physical_location + API_appid;
 		$.getJSON(api_url).done(function(data) {
 		FiveDayWeatherInfo = data;
-		/*the use of another function in the callback function to ensure FiveDayWeatherInfo gets updated from the first time 
-		retrieveJSONData() is called (without promises). This is because of the unexpected behaviour resulting from the innate nature
-		of JavaScript and callback functions being asynchronous. See: https://stackoverflow.com/questions/14220321/how-do-i-return-the-response-from-an-asynchronous-call
-		Using a function to ensure synchronousity is important */
-		//Side note: the importance of asychronousity is important on web browsers, as seen in the link above.
 		}).then(function() { 
-		simplifyWeatherData(FiveDayWeatherInfo);
+		simplifyFiveDayWeatherData(FiveDayWeatherInfo);
 		}).then(function() { //FIXME UNSURE IF THESE THENS AFTER THE SIMPLIFY...DATA ARE NECCESARY (HERE AND ABOVE)
 		document.getElementById("testp3").innerHTML = JSON.stringify(simplifiedFiveDayWeatherData);
 		});
@@ -252,7 +250,7 @@ function simplifyOneCallWeatherData(OneCallWeatherInfo) {
  	}	
 };
 
-function simplifyWeatherData(FiveDayWeatherInfo) {
+function simplifyFiveDayWeatherData(FiveDayWeatherInfo) {
 	//FiveDayWeatherInfo is a list of the information of each day for 5 days of a particular city
 
 	for (var i=0; i<FiveDayWeatherInfo["list"].length; i++) {
@@ -368,7 +366,6 @@ function activatePlacesSearch() {
     		country_name = place.address_components[i]["long_name"];
     	}
     }
-
     //debug statement
     //console.log(city_name, country_name);
 	});
