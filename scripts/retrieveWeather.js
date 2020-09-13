@@ -11,15 +11,15 @@ const browserTimeZone  = Intl.DateTimeFormat().resolvedOptions().timeZone;
 var weather_API_key = config.WEATHER_API_KEY; //FIXME, hide API key
 var google_API_key = config.GOOGLE_API_KEY; //FIXME, hide API key
 var coordinates = {};
+var city_name = "";
+var country_name = "";
+
 
 //TODO LIST
-//perhaps add local time zone (e.g. PST) when outputting the time/date for the user
+//perhaps add local time zone label (e.g. PST) when outputting the time/date for the user (OR MAKE A NOTE specifying the sunset/sunrise time zone and all other times' time zones to the user)
 //use weatherAPI icons/id for pictures in the app
-//Convert units from imperial to metric and metric to imperial depending on user preferences (maybe a switch).
-//FIXME: DONE(CHECK AVALIABLE TAGS) Wind gust, daily.rain, daily.snow is not avaliable everywhere, maybe adjust it for places that don't have wind gust data or remove that completely
 //Separate Google GeoCoding & Places/Maps API and then restrict Places/Maps to your web URL only and try to find a way to restrict Google GeoCoding service to an IP address only (as it cannot be restricted otherwise: https://stackoverflow.com/questions/50187750/restricted-google-api-key-is-not-working-in-reverse-geocoding)
-//make decision on whether to restrict searches to only showing city results or allow any type of search, but make a function to allow only the city to be used in the API_url
-//Make use of unit conversion function and remove manual conversion from code
+//Make use of unit conversion function for imperial/metric and remove manual conversion from code
 
 
 function retrieveJSONData() {
@@ -32,8 +32,8 @@ function retrieveJSONData() {
 	var physical_location = document.getElementById("physical_location").value;
 	var API_appid = "&APPID=" + weather_API_key;
 	var API_url_5Day = "https://api.openweathermap.org/data/2.5/forecast?q=";
-	var city="edmonton"; //FIXME
-	var country="canada"; //FIXME
+	var city="london"; //FIXME
+	var country="United Kingdom"; //FIXME
 	var geoCodeUrl = "https://maps.googleapis.com/maps/api/geocode/json?address="+city+country+"&key="+google_API_key;
 
 	$.getJSON(geoCodeUrl).done(function(data) {
@@ -106,6 +106,8 @@ function test() {
 	console.log(simplifiedFiveDayWeatherData);
 	console.log(simplifiedOneCallWeatherData);
 	console.log(simplifiedHistoricalOneCallWeatherData);
+	console.log(city_name, country_name);
+	console.log(browserTimeZone, OneCallWeatherInfo["timezone"]);
 }
 
 function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
@@ -339,8 +341,6 @@ function getCoordinates(city, country) {
 	$.getJSON(geoCodeUrl, saveCoordinates);
 };
 
-
-//FIXME make decision on whether to restrict searches to only showing city results or allow any type of search, but make a function to allow only the city to be used in the API_url
 function activatePlacesSearch() {
 
 	var options = {types: ['(cities)']};
@@ -350,9 +350,26 @@ function activatePlacesSearch() {
 	google.maps.event.addListener(autocomplete, 'place_changed', function () {
     var place = autocomplete.getPlace();
     console.log(place.address_components);
+ 
+    for (var i = 0; i<place.address_components.length; i++) {
+    	if (place.address_components[i]["types"].includes("locality")) {
+    		city_name = place.address_components[i]["long_name"];
+    	}
 
-    //too hard coded, doesn't work, fix
-    console.log(place.address_components[0]["long_name"]);
-    console.log(place.address_components[place.address_components.length-1]["long_name"]);
+    	else if (place.address_components[i]["types"].includes("administrative_area_level_3") && city_name == "") { // otherwise find administrative_area_level_3  in the types (it can only be one or the either, because of (cities) restriction)
+    		city_name = place.address_components[i]["long_name"];
+    	}
+
+    	else {
+    		;
+    	}
+
+    	if (place.address_components[i]["types"].includes("country")) {
+    		country_name = place.address_components[i]["long_name"];
+    	}
+    }
+
+    //debug statement
+    //console.log(city_name, country_name);
 	});
 };	
