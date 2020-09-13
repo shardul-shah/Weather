@@ -19,6 +19,8 @@ var coordinates = {};
 //FIXME: DONE(CHECK AVALIABLE TAGS) Wind gust, daily.rain, daily.snow is not avaliable everywhere, maybe adjust it for places that don't have wind gust data or remove that completely
 //Separate Google GeoCoding & Places/Maps API and then restrict Places/Maps to your web URL only and try to find a way to restrict Google GeoCoding service to an IP address only (as it cannot be restricted otherwise: https://stackoverflow.com/questions/50187750/restricted-google-api-key-is-not-working-in-reverse-geocoding)
 //make decision on whether to restrict searches to only showing city results or allow any type of search, but make a function to allow only the city to be used in the API_url
+//Make use of unit conversion function and remove manual conversion from code
+
 
 function retrieveJSONData() {
 	//everytime weather information is retrieved for a city, the following global variables must be reinitialized to being empty
@@ -33,7 +35,6 @@ function retrieveJSONData() {
 	var city="edmonton"; //FIXME
 	var country="canada"; //FIXME
 	var geoCodeUrl = "https://maps.googleapis.com/maps/api/geocode/json?address="+city+country+"&key="+google_API_key;
-
 
 	$.getJSON(geoCodeUrl).done(function(data) {
 		coordinates["longitude"] = data["results"][0]["geometry"]["location"]["lng"];
@@ -144,7 +145,6 @@ function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
 			if ("wind_gust" in historicalOneCallWeatherInfo[j]["hourly"][i]) { //if snowVolume data avaliable 
 				historicalHourlyWeatherData["windGustSpeed"] =  historicalOneCallWeatherInfo[j]["hourly"][i]["wind_gust"]; //snow volume in last hour in mm
 			}			
-
 			historicalDailyWeatherData.push(historicalHourlyWeatherData);
 		}
 		simplifiedHistoricalOneCallWeatherData.push(historicalDailyWeatherData);	
@@ -268,17 +268,65 @@ function simplifyWeatherData(FiveDayWeatherInfo) {
 		weatherDataAtOneTime["precipitationChance"] = FiveDayWeatherInfo["list"][i]["pop"] * 100; //convert decimal to %
 		weatherDataAtOneTime["cloudCover"] = FiveDayWeatherInfo["list"][i]["clouds"]["all"];
 
-		if ("rain" in FiveDayWeatherInfo["list"][i]) {//if rainVolume data avaliable 
+		if ("rain" in FiveDayWeatherInfo["list"][i]) { //if rainVolume data avaliable 
 			weatherDataAtOneTime["rainVolume"] = FiveDayWeatherInfo["list"][i]["rain"]["3h"]; //rain volume in last hour in mm
 		}
 
-		if ("snow" in FiveDayWeatherInfo["list"][i]) {//if rainVolume data avaliable 
+		if ("snow" in FiveDayWeatherInfo["list"][i]) { //if rainVolume data avaliable 
 			weatherDataAtOneTime["snowVolume"] = FiveDayWeatherInfo["list"][i]["snow"]["3h"]; //rain volume in last hour in mm
 		}
 
 		simplifiedFiveDayWeatherData.push(weatherDataAtOneTime);
 	}	
 };
+
+function convertUnits(unitSystemToConvertTo, unitType, value) {
+	//the input data in this function will be the input data type & in the units of the data in the weather data obtained by OpenWeatherMap API
+	//returns input data in the unitSystemToConvertTo's equivalent unit
+	//note: The use of braces for single line if/else/else if statements is for clarity and to follow convention.
+	//All rounding of numbers obtained by conversion/prior to conversion will be done in another function.
+
+	if (unitSystemToConvertTo == "metric") {
+	//note, by default through the weather API data, snow & rain volume is in millimeters, and visibility is in meters (both metric).
+		if (unitType == "temperature") {
+			return value - 273.15; //convert Kelvin to Celsius
+		}
+
+		else if (unitType == "pressure") {
+			return value/10; //convert Hectopascal to Pascal
+		}
+
+		else if (unitType == "distance") {
+			return value/1000; //convert meters to kilometers
+		}
+
+		else { //unitType == "speed"
+			return value*3.6; //convert Meters/Second to Kilometers/Hour
+		}
+	}
+	else {
+		if (unitType == "temperature") {
+			return (value - 273.15)*9/5 + 32; //convert Kelvin to Fahrenheit
+		}
+
+		else if (unitType == "pressure") {
+			return value; //convert Hectopascal to Millibar
+		}
+
+		else if (unitType == "volume") {
+			return value/(1/0.039370); //convert Millimeters to Inches
+		}
+
+		else if (unitType == "distance") {
+			return value*0.00062137; //convert Meters to Miles
+		}
+
+		else { //unitType == "speed"
+			return value*1/0.44704; //convert Meters/Second to Miles/Hour
+		}
+	}
+
+}
 
 function convertToSpecifiedTimeZone(inputDate, inputTimeZone) {
 	return inputDate.toLocaleString("en-US", {timeZone: inputTimeZone});
@@ -293,6 +341,17 @@ function getCoordinates(city, country) {
 
 //FIXME make decision on whether to restrict searches to only showing city results or allow any type of search, but make a function to allow only the city to be used in the API_url
 function activatePlacesSearch() {
+
+	var options = {types: ['(cities)']};
 	var physical_location = document.getElementById("physical_location");
-	var autocomplete = new google.maps.places.Autocomplete(physical_location);
-};
+	var autocomplete = new google.maps.places.Autocomplete(physical_location, options);
+
+	google.maps.event.addListener(autocomplete, 'place_changed', function () {
+    var place = autocomplete.getPlace();
+    console.log(place.address_components);
+
+    //too hard coded, doesn't work, fix
+    console.log(place.address_components[0]["long_name"]);
+    console.log(place.address_components[place.address_components.length-1]["long_name"]);
+	});
+};	
