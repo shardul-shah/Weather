@@ -20,10 +20,11 @@ var country_name = "";
 
 
 //TODO LIST
-//perhaps add local time zone label (e.g. PST) when outputting the time/date for the user (FIXME OR MAKE A NOTE specifying the sunset/sunrise time zone and all other times' time zones to the user)
+//perhaps add local time zone label (e.g. PST) when outputting the time/date for the user (FIXME OR MAKE A NOTE specifying the sunset/sunrise time zone and all other times' time zones to the user, since its trickier to output abbrievation)
 //use weatherAPI icons/id for pictures in the app
 //Separate Google GeoCoding & Places/Maps API and then restrict Places/Maps to your web URL only and try to find a way to restrict Google GeoCoding service to an IP address only (as it cannot be restricted otherwise: https://stackoverflow.com/questions/50187750/restricted-google-api-key-is-not-working-in-reverse-geocoding)
 //Make use of unit conversion function for imperial/metric and remove manual conversion from code
+//Create physical wireframes to plan out weather data will actually be presented in the UI, and what's required
 
 function retrieveAndStoreJSOnData() {
 	//everytime weather information is retrieved for a city, the following global variables must be reinitialized to being empty
@@ -106,7 +107,7 @@ function test() {
 	console.log(simplifiedHistoricalOneCallWeatherData);
 	console.log(city_name, country_name);
 	console.log(browserTimeZone, OneCallWeatherInfo["timezone"]);
-}
+};
 
 function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
 	//historicalOneCallWeatherInfo is a list of the past 5 days and  current day of the information of weather of a particular city, including:
@@ -340,14 +341,14 @@ function getCoordinates(city, country) {
 };
 
 function activatePlacesSearch() {
-
 	var options = {types: ['(cities)']};
 	var physical_location = document.getElementById("physical_location");
 	var autocomplete = new google.maps.places.Autocomplete(physical_location, options);
 
 	google.maps.event.addListener(autocomplete, 'place_changed', function () {
     var place = autocomplete.getPlace();
-    console.log(place.address_components);
+    //debug statement
+    //console.log(place.address_components);
  
     for (var i = 0; i<place.address_components.length; i++) {
     	if (place.address_components[i]["types"].includes("locality")) {
@@ -359,7 +360,7 @@ function activatePlacesSearch() {
     	}
 
     	else {
-    		;
+    		; //do nothing
     	}
 
     	if (place.address_components[i]["types"].includes("country")) {
