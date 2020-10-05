@@ -45,7 +45,7 @@
 				</li>
 			</ul>
 		</nav>
-			<div class="contai"> 
+			<div>
 				<p>
 				asjdoijsdioajsiod
 				</p>
@@ -56,28 +56,46 @@
 				asjdoijsdioajsiod
 				</p>
 			</div>
-			<div class="container_horizontal">
-				<p id="test_paragraph"> 
-				Test 
-				</p>
-				<div style="width: 100%;">
-				</div>
-				<p id="testp2">
-				Test 2
-				</p>
-				<div style="width: 100%;">
-				</div>
-				<p id="testp3">
-				Test 3
-				</p>
-				<div style="width: 100%;">
-				</div>
 
-				<label for="physical_location">Enter Location Here: </label>
-				<input type="text" id="physical_location" value="Edmonton, Canada" name="physical_location">
-				<button onclick="retrieveJSONData()"> Search </button>
-				<button onclick="test()"> Search </button>
-				<button onclick="()"> Search </button>
+		<div>
+			<ul id="selection_bar">
+				<li> Now </li>
+				<li> Today </li>
+				<li> Tomorrow </li>
+				<li> Weekly Overview </li> 
+				<li> Weekend </li>
+				<li> Hourly </li>
+				<li> 5 Day Detailed </li>
+				<li> Historical </li>
+			</ul>
+		</div>
+
+		<div id="weather_info">
+		<h1 class="container_horizontal"> City, Country </h2>
+		<h3> ALERTS: </h3>
+		</div>
+
+		<div class="container_horizontal">
+			<p id="test_paragraph"> 
+			Test 
+			</p>
+			<div style="width: 100%;">
 			</div>
+			<p id="testp2">
+			Test 2
+			</p>
+			<div style="width: 100%;">
+			</div>
+			<p id="testp3">
+			Test 3
+			</p>
+			<div style="width: 100%;">
+			</div>
+
+			<label for="physical_location">Enter Location Here: </label>
+			<input type="text" id="physical_location" value="Edmonton, Canada" name="physical_location">
+			<button onclick="retrieveAndStoreJSONData()"> retrieveData </button>
+			<button onclick="test()"> Test </button>
+		</div>
 	</body>
 </html>

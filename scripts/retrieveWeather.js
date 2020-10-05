@@ -18,15 +18,18 @@ var coordinates = {};
 var city_name = "";
 var country_name = "";
 
-
 //TODO LIST
 //perhaps add local time zone label (e.g. PST) when outputting the time/date for the user (FIXME OR MAKE A NOTE specifying the sunset/sunrise time zone and all other times' time zones to the user, since its trickier to output abbrievation)
-//use weatherAPI icons/id for pictures in the app
+//use weatherAPI icons/id for pictures in the app; refer to 
 //Separate Google GeoCoding & Places/Maps API and then restrict Places/Maps to your web URL only and try to find a way to restrict Google GeoCoding service to an IP address only (as it cannot be restricted otherwise: https://stackoverflow.com/questions/50187750/restricted-google-api-key-is-not-working-in-reverse-geocoding)
 //Make use of unit conversion function for imperial/metric and remove manual conversion from code
 //Create physical wireframes to plan out weather data will actually be presented in the UI, and what's required
+//Integrate alerts consideration into application
 
-function retrieveAndStoreJSOnData() {
+
+//FUNCTIONS
+
+function retrieveAndStoreJSONData() {
 	//everytime weather information is retrieved for a city, the following global variables must be reinitialized to being empty
 	simplifiedFiveDayWeatherData = [];
 	simplifiedOneCallWeatherData = [{"current": []}, {"hourly": []}, {"daily": []}];
@@ -113,8 +116,6 @@ function simplifyHistoricalOneCallWeatherInfo(historicalOneCallWeatherInfo) {
 	//historicalOneCallWeatherInfo is a list of the past 5 days and  current day of the information of weather of a particular city, including:
 	//-Weather at the requested time - "current" (I will not be storing this)
 	//-Hourly weather information for the day of the requested time (I will be storing this)
-	console.log(JSON.stringify(historicalOneCallWeatherInfo));
-	console.log(historicalOneCallWeatherInfo.length.toString());
 	for (var j = 0; j<historicalOneCallWeatherInfo.length; j++) {
 		var historicalDailyWeatherData = []; //weatherData for one day
 
@@ -159,6 +160,8 @@ function simplifyOneCallWeatherData(OneCallWeatherInfo) {
 	//-Daily (7 day weather) (1 dictionary for each day)
 
 	var currentWeatherData = {};
+	currentWeatherData["sunriseTime"] = convertToSpecifiedTimeZone(new Date(OneCallWeatherInfo["current"]["sunrise"]*1000), OneCallWeatherInfo["timezone"]); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time
+	currentWeatherData["sunsetTime"] = convertToSpecifiedTimeZone(new Date(OneCallWeatherInfo["current"]["sunset"]*1000), OneCallWeatherInfo["timezone"]); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time
 	currentWeatherData["dateTime"] = convertToSpecifiedTimeZone(new Date(OneCallWeatherInfo["current"]["dt"]*1000), browserTimeZone); //multiply epoch time by 1000 to get the # of milliseconds; that is used to make a Date object for the epoch time); 
 	currentWeatherData["currentTemp"] = OneCallWeatherInfo["current"]["temp"] - 273.15;
 	currentWeatherData["feelsLikeTemp"] = OneCallWeatherInfo["current"]["feels_like"] - 273.15;
@@ -168,6 +171,8 @@ function simplifyOneCallWeatherData(OneCallWeatherInfo) {
 	currentWeatherData["visibility"] = OneCallWeatherInfo["current"]["visibility"]; //visibility in meters
 	currentWeatherData["windSpeed"] = OneCallWeatherInfo["current"]["wind_speed"]*3.6; //convert m/s to km/h
 	currentWeatherData["description"] = OneCallWeatherInfo["current"]["weather"][0]["description"];
+	currentWeatherData["humidity"] = OneCallWeatherInfo["current"]["humidity"];
+
 
 	if ("wind_gust" in OneCallWeatherInfo["current"]) { //if wind_gust data avaliable
 		currentWeatherData["windGustSpeed"] = OneCallWeatherInfo["current"]["wind_gust"]*3.6; //convert m/s to km/h; current wind gust speed
